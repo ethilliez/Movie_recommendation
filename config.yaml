@@ -9,4 +9,4 @@ annoy-parameters:
     N_tops: 4
     output_annoy_name: 'movie_indexing'
 
-chosen_movie: 'Blade Runner'
+chosen_movie: 'The Dark Knight'
