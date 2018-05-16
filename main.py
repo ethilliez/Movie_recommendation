@@ -1,10 +1,8 @@
 import nltk
 import pandas as pd 
 import os.path
-import codecs
 import logging
 from config import config
-import math
 import annoy
 import glob
 import re
@@ -30,6 +28,10 @@ class movie_recommendation_engine:
         DF_infos.columns = ['Wikipedia_ID', 'Freebase_ID','Movie_name', 'Movie_release_date',
             'Movie_revenue','Movie_runtime','Movie_languages','Movie_countries','Movie_genres']
         DF_infos['Movie_genres']=DF_infos['Movie_genres'].apply(lambda x: re.findall(r': "(.*?)",',x))
+        # Filter only recent movies
+        DF_infos['Movie_release_date'] = DF_infos['Movie_release_date'].fillna('1900')
+        DF_infos['Movie_release_date'] = DF_infos['Movie_release_date'].apply(lambda x: int(x[0:4]) if type(x) == type('a') and len(x) > 4 else int(x))
+        DF_infos = DF_infos[ DF_infos['Movie_release_date'] >= 1975]
         # Read the plots file
         f = open(self.path+self.file_plots, 'r')
         inside = False
@@ -78,7 +80,9 @@ class movie_recommendation_engine:
         name_list = [name for name in names.words('male.txt')] + [name for name in names.words('female.txt')]
         # For each synopsis
         matrix = []
-        for i in range(0, len(DF.index)):
+        Nb_movies = len(DF.index)
+        for i in range(0, Nb_movies):
+            logger.info(("Row ID: ", i+1, "/", Nb_movies))
             row = []
             # Get term frequency description of the synopsis
             text = DF.iloc[i]['Synopsis']
@@ -137,10 +141,7 @@ class movie_recommendation_engine:
         if(len(index_file) == 0):
             # If not, first read data 
             logger.info(" Reading data...")
-            if(os.path.isfile(self.path+'Dataset.csv')):
-                DF = pd.read_csv(self.path+'Dataset.csv')
-            else:
-                DF = self.read_data()
+            DF = self.read_data()
             DF.index = range(0,len(DF))
             logger.info(DF.head(5))
             DF.to_csv(self.path+'Dataset.csv')
