@@ -1,0 +1,12 @@
+path-parameters:
+    path: 'Data/'
+    file_plots: 'plot_summaries.txt' 
+    file_movies: 'movie.metadata.tsv'
+
+annoy-parameters:
+    N_trees: 5
+    N_nodes: 50
+    N_tops: 4
+    output_annoy_name: 'movie_indexing'
+
+chosen_movie: 'Blade Runner'

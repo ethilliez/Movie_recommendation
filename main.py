@@ -3,6 +3,7 @@ import pandas as pd
 import os.path
 import codecs
 import logging
+from config import config
 import math
 import annoy
 import glob
@@ -23,8 +24,8 @@ class movie_recommendation_engine:
         self.output_annoy_name = output_annoy_name
 
     def read_data(self):
-    	'''Read the movies file and plots file into separate dataframes and merge them.'''
-    	# Read the Movies file
+        '''Read the movies file and plots file into separate dataframes and merge them.'''
+        # Read the Movies file
         DF_infos = pd.read_table(self.path+self.file_movies, sep='\t')
         DF_infos.columns = ['Wikipedia_ID', 'Freebase_ID','Movie_name', 'Movie_release_date',
             'Movie_revenue','Movie_runtime','Movie_languages','Movie_countries','Movie_genres']
@@ -56,7 +57,7 @@ class movie_recommendation_engine:
         return DF
 
     def StemTokens(self, tokens):
-    	'''Apply PorterStemmer on tokens to enhance efficiancy of tokenization'''
+        '''Apply PorterStemmer on tokens to enhance efficiancy of tokenization'''
         stemmer = nltk.stem.porter.PorterStemmer()
         return [stemmer.stem(token) for token in tokens]
 
@@ -70,7 +71,7 @@ class movie_recommendation_engine:
         return fd
 
     def tfidf_matrix_movies(self, DF):
-    	'''Build the TDIDF matrix over all movies from the dataframe DF. '''
+        '''Build the TDIDF matrix over all movies from the dataframe DF. '''
         # Get the term frequence of all words of all synopsis
         fd_all = self.tf_all_movies(DF)
         # Create list of all possible name from library
@@ -86,7 +87,7 @@ class movie_recommendation_engine:
             fd_synopsis = nltk.FreqDist(tokens)
             # For each term over all movie synopsis
             for term in fd_all:
-            	# If this term in within this synopsis and not a name and an alphabetical string
+                # If this term in within this synopsis and not a name and an alphabetical string
                 if(term.isalpha() and term not in name_list and term in fd_synopsis.keys()):
                     # Get and save inverse frequency of the term over all movies
                     tfidf_val = round(fd_synopsis[term]/fd_all[term],2)
@@ -98,8 +99,8 @@ class movie_recommendation_engine:
         return matrix 
 
     def build_indexing_tree(self, tdidf_matrix):
-    	'''Build an Annoy tree index of the TDIDF matrix'''
-    	# Initialize the Annoy tree with the cosinus distance
+        '''Build an Annoy tree index of the TDIDF matrix'''
+        # Initialize the Annoy tree with the cosinus distance
         N_vector = len(tdidf_matrix[0])
         a = annoy.AnnoyIndex(N_vector, metric="angular")
         # Feed Annoy index
@@ -113,7 +114,7 @@ class movie_recommendation_engine:
         a.save(self.path+self.output_annoy_name+str(N_vector)+'.annoy')
 
     def load_index(self):
-    	'''Load the Annoy tree index from file.'''
+        '''Load the Annoy tree index from file.'''
         indexing_tree = glob.glob(self.path+"*.annoy")
         N_vector = indexing_tree[0].replace(self.path+self.output_annoy_name,'')
         N_vector = int(N_vector.replace('.annoy',''))
@@ -122,7 +123,7 @@ class movie_recommendation_engine:
         return annoy_index
 
     def query_indexing_tree(self, annoy_index,  DF, chosen_movie):
-    	'''Query the chosen movie in the annoy_index by getting its id in the DF dataframe.'''
+        '''Query the chosen movie in the annoy_index by getting its id in the DF dataframe.'''
         # Find index of movie reference in DF
         list_index = DF.index[DF.Movie_name.str.contains(chosen_movie)]
         # Found the N closest to the chosen movie
@@ -131,17 +132,17 @@ class movie_recommendation_engine:
         return Top_closest
 
     def main(self, chosen_movie):
-    	# Check if Annoy movie index exists
+        # Check if Annoy movie index exists
         index_file = glob.glob(self.path+"*.annoy")
         if(len(index_file) == 0):
-        	# If not, first read data 
+            # If not, first read data 
             logger.info(" Reading data...")
             if(os.path.isfile(self.path+'Dataset.csv')):
                 DF = pd.read_csv(self.path+'Dataset.csv')
             else:
                 DF = self.read_data()
             DF.index = range(0,len(DF))
-            print(DF.head(5))
+            logger.info(DF.head(5))
             DF.to_csv(self.path+'Dataset.csv')
             logger.info((" Number of movies: ", len(DF.index)))
             # Then build the TDIDF matrix over all movies
@@ -163,18 +164,11 @@ class movie_recommendation_engine:
         for i in range(self.N_tops):
             Best_choices[Top_closest[1][i]]= DF.iloc[Top_closest[0][i]]['Movie_name']
         return Best_choices
-        
+
 
 if __name__ == '__main__':
     # Define the main parameters
-    path = 'Data/'
-    file_plots = 'plot_summaries.txt' 
-    file_movies = 'movie.metadata.tsv'
-    N_trees = 5
-    N_nodes = 50
-    N_tops = 4
-    output_annoy_name = 'movie_indexing'
-    chosen_movie = 'Blade Runner'
+    path, file_plots, file_movies, N_trees, N_nodes, N_tops, output_annoy_name, chosen_movie = config('config.yaml').parse()
     # Initialize the process
     process = movie_recommendation_engine(path, file_plots, file_movies, N_trees, N_nodes, N_tops, output_annoy_name)
     # Run the process
